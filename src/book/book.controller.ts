@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Post, Put, Param,Patch,Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Param,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import { BookService } from './book.service';
-import { CreateBookDto } from './dto/create.dto';
+import { CreateBookDto, updateBookDto } from './dto/create.dto';
+import { SellBookDto } from './dto/sell.dto';
 
 @Controller('book')
 export class BookController {
@@ -20,14 +30,26 @@ export class BookController {
   searchBooks(@Query('q') query: string) {
     return this.bookService.searchBooks(query);
   }
-  @Get(':id')
+  @Get('/top-selling')
+  getTopSellingBooks() {
+    return this.bookService.getTopSellingBooks();
+  }
+  @Get('/:id')
   getBookById(@Param('id') id: string) {
     return this.bookService.getBookById(id);
   }
 
-  @Patch(':id')
-    updateBook(@Param('id') id: string, @Body() updateBookDto: CreateBookDto) {
-        return this.bookService.updateBook(id, updateBookDto);
-    }
+  @Patch('/:id')
+  updateBook(@Param('id') id: string, @Body() updateBookDto:updateBookDto) {
+    return this.bookService.updateBook(id, updateBookDto);
+  }
 
+  @Post('/sell/:bookId')
+  sellBook(
+    @Param('bookId') bookId: string,
+    @Body() sellBookDto: SellBookDto,
+  ): Promise<string> {
+    return this.bookService.sellBook(bookId, sellBookDto.quantity);
+  }
+ 
 }

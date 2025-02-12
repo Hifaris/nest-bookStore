@@ -31,3 +31,29 @@ export class CreateBookDto {
   @IsOptional()
   stock?: number = 0;
 }
+
+export class updateBookDto {
+  @IsString()
+  @IsOptional()
+  title: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsNumber()
+  @IsOptional()
+  price: number;
+
+  @IsMongoId()
+  @IsOptional()
+  category: string; 
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean = true;
+
+  @IsNumber()
+  @IsOptional()
+  stock?: number = 0;
+}

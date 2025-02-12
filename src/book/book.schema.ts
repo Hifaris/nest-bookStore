@@ -22,6 +22,9 @@ export class Book {
 
   @Prop({ default: 0 })
   stock?: number;
+
+  @Prop({ default: 0 })
+  sold?: number;
 }
 
 export const BookSchema = SchemaFactory.createForClass(Book);
