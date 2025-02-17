@@ -34,9 +34,7 @@ export class BookService {
   }
 
   async getBookById(id: string): Promise<Book | null> {
-    // if (!mongoose.Types.ObjectId.isValid(id)) {
-    //   throw new BadRequestException('Invalid Book ID format');
-    // }
+  
     const book = await this.bookModel.aggregate([
       {
         $match: { _id: new mongoose.Types.ObjectId(id) }, // ใช้ $match เพื่อค้นหาหนังสือที่ตรงกับ id
@@ -77,7 +75,7 @@ export class BookService {
         id,
         {
           $inc: {
-            stock: + updateBookDto.stock,
+            stock: +updateBookDto.stock,
           },
         },
         { new: true, runValidators: true },
@@ -103,12 +101,26 @@ export class BookService {
         .aggregate([
           {
             $search: {
-              index: 'bookSearched',
-              text: {
-                query,
-                path: ['title', 'description'],
-              },
-            },
+              index: "bookSearch",
+              compound: {
+                should: [
+                  {
+                    wildcard: {
+                      query: query + "*",
+                      path: "title",
+                      allowAnalyzedField: true
+                    }
+                  },
+                  {
+                    wildcard: {
+                      query: query + "*",
+                      path: "description",
+                      allowAnalyzedField: true
+                    }
+                  }
+                ]
+              }
+            }
           },
           {
             $lookup: {
