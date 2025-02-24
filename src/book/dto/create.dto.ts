@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsMongoId,
 } from 'class-validator';
+import { Types } from 'mongoose';
 
 export class CreateBookDto {
   @IsString()
@@ -47,7 +48,7 @@ export class updateBookDto {
 
   @IsMongoId()
   @IsOptional()
-  category: string; 
+  category: string;
 
   @IsBoolean()
   @IsOptional()
@@ -56,4 +57,13 @@ export class updateBookDto {
   @IsNumber()
   @IsOptional()
   stock?: number = 0;
+}
+
+export interface BookWithCategory {
+  _id: Types.ObjectId;
+  title: string;
+  description?: string;
+  price: number;
+  stock?: number;
+  category: { name: string };
 }

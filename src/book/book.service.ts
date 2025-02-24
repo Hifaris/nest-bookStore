@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Book, BookDocument } from './book.schema';
-import mongoose, { Model, Types } from 'mongoose';
-import { CreateBookDto, updateBookDto } from './dto/create.dto';
+import { Book } from './book.schema';
+import { Types } from 'mongoose';
+import {
+  BookWithCategory,
+  CreateBookDto,
+  updateBookDto,
+} from './dto/create.dto';
 import { CategoryService } from 'src/category/category.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BookRepository } from './book.repository';
 
 @Injectable()
 export class BookService {
   constructor(
-    @InjectModel(Book.name) private bookModel: Model<BookDocument>,
+    private readonly bookRepository: BookRepository,
     private readonly categoryService: CategoryService,
   ) {}
 
@@ -22,71 +26,42 @@ export class BookService {
       throw new NotFoundException('Category not found');
     }
 
-    const newBook = new this.bookModel({
+    return this.bookRepository.create({
       ...createBookDto,
       category: categoryId,
     });
-    return newBook.save();
   }
 
   async getBooks(): Promise<Book[]> {
-    return this.bookModel.find({ isActive: true }).exec();
+    return this.bookRepository.findAll();
   }
 
-  async getBookById(id: string): Promise<Book | null> {
-  
-    const book = await this.bookModel.aggregate([
-      {
-        $match: { _id: new mongoose.Types.ObjectId(id) }, // ใช้ $match เพื่อค้นหาหนังสือที่ตรงกับ id
-      },
-      {
-        $lookup: {
-          from: 'categories', // ชื่อของ collection ที่ต้องการ join
-          localField: 'category', // field ใน collection book ที่จะ join
-          foreignField: '_id',
-          as: 'category',
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          description: 1,
-          price: 1,
-          stock: 1,
-          category: { name: 1 },
-        },
-      },
-    ]);
-
-    if (book.length === 0) {
+  async getBookById(id: string): Promise<BookWithCategory> {
+    const book = await this.bookRepository.findById(id);
+    if (!book) {
       throw new NotFoundException('Book not found');
     }
-    // aggregate return aa array of object
-    return book[0];
+    return book;
   }
 
   async updateBook(
     id: string,
     updateBookDto: updateBookDto,
-  ): Promise<Book | null | { message: string }> {
+  ): Promise<{ message: string }> {
     if (updateBookDto.stock) {
-      const updatedStock = await this.bookModel.findByIdAndUpdate(
+      const updated = await this.bookRepository.updateStock(
         id,
-        {
-          $inc: {
-            stock: +updateBookDto.stock,
-          },
-        },
-        { new: true, runValidators: true },
+        +updateBookDto.stock,
       );
+      if (!updated) {
+        throw new NotFoundException('Book not found');
+      }
       return {
         message: 'Book updated successfully',
       };
     }
-    const book = await this.bookModel
-      .findByIdAndUpdate(id, updateBookDto, { new: true })
-      .exec();
+
+    const book = await this.bookRepository.updateById(id, updateBookDto);
     if (!book) {
       throw new NotFoundException('Book not found');
     }
@@ -95,55 +70,9 @@ export class BookService {
     };
   }
 
-  async searchBooks(query: string): Promise<Book[]> {
+  async searchBooks(query: string): Promise<BookWithCategory[]> {
     try {
-      const results = await this.bookModel
-        .aggregate([
-          {
-            $search: {
-              index: "bookSearch",
-              compound: {
-                should: [
-                  {
-                    wildcard: {
-                      query: query + "*",
-                      path: "title",
-                      allowAnalyzedField: true
-                    }
-                  },
-                  {
-                    wildcard: {
-                      query: query + "*",
-                      path: "description",
-                      allowAnalyzedField: true
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          {
-            $lookup: {
-              from: 'categories', // name of collection
-              localField: 'category', // the name of the field in the Book collection that want to join
-              foreignField: '_id', // that is the field in the Category collection that the book field will be compared to
-              as: 'category', // the new field that will be added to the Book document
-            },
-          },
-          {
-            $unwind: '$category', // transform the category field from array to object
-          },
-          {
-            $project: {
-              title: 1,
-              description: 1,
-              price: 1,
-              stock: 1,
-              category: { name: 1 }, //name จาก category
-            },
-          },
-        ])
-        .exec();
+      const results = await this.bookRepository.search(query);
 
       if (results.length === 0) {
         throw new NotFoundException(
@@ -152,14 +81,17 @@ export class BookService {
       }
 
       return results;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Search error:', error);
-      throw new NotFoundException(`${error.message}`);
+      if (error instanceof Error) {
+        throw new NotFoundException(`${error.message}`);
+      }
+      throw new NotFoundException('An error occurred during search');
     }
   }
 
   async sellBook(id: string, quantity: number): Promise<string> {
-    const book = await this.bookModel.findById(id).exec();
+    const book = await this.bookRepository.findBookById(id);
     if (!book) {
       throw new NotFoundException('Book not found');
     }
@@ -178,17 +110,7 @@ export class BookService {
       throw new BadRequestException('Not enough books in stock');
     }
 
-    // Update using plain numbers
-    const updatedBook = await this.bookModel.findByIdAndUpdate(
-      id,
-      {
-        $inc: {
-          sold: quantity,
-          stock: -quantity,
-        },
-      },
-      { new: true, runValidators: true },
-    );
+    const updatedBook = await this.bookRepository.updateSales(id, quantity);
 
     if (!updatedBook) {
       throw new Error('Failed to update book');
@@ -198,10 +120,6 @@ export class BookService {
   }
 
   async getTopSellingBooks(): Promise<Book[]> {
-    return this.bookModel
-      .find({ isActive: true })
-      .sort({ sold: -1 })
-      .limit(5)
-      .exec();
+    return this.bookRepository.findTopSelling();
   }
 }

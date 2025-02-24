@@ -40,7 +40,7 @@ export class BookController {
   }
 
   @Patch('/:id')
-  updateBook(@Param('id') id: string, @Body() updateBookDto:updateBookDto) {
+  updateBook(@Param('id') id: string, @Body() updateBookDto: updateBookDto) {
     return this.bookService.updateBook(id, updateBookDto);
   }
 
@@ -51,5 +51,4 @@ export class BookController {
   ): Promise<string> {
     return this.bookService.sellBook(bookId, sellBookDto.quantity);
   }
- 
 }

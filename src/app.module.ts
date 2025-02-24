@@ -7,11 +7,14 @@ import { CategoryModule } from './category/category.module';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb+srv://admin:aa9543976@cluster0.jgru9.mongodb.net/?retryWrites=true&w=majority', {
-      dbName: 'bookstore'
-    }),
+    MongooseModule.forRoot(
+      'mongodb+srv://admin:aa9543976@cluster0.jgru9.mongodb.net/?retryWrites=true&w=majority',
+      {
+        dbName: 'bookstore',
+      },
+    ),
     BookModule,
-    CategoryModule
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

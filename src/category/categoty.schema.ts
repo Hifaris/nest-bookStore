@@ -16,8 +16,8 @@ export const CategorySchema = SchemaFactory.createForClass(Category);
 
 CategorySchema.virtual('books', {
   ref: 'Book',
-  localField: '_id',  
-  foreignField: 'category'
+  localField: '_id',
+  foreignField: 'category',
 });
 
 CategorySchema.set('toObject', { virtuals: true });
