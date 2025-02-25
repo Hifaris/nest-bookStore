@@ -9,8 +9,7 @@ export class BookRepository {
   constructor(@InjectModel(Book.name) private bookModel: Model<BookDocument>) {}
 
   async create(bookData: any): Promise<Book> {
-    const newBook = new this.bookModel(bookData);
-    return newBook.save();
+    return this.bookModel.create(bookData);
   }
 
   async findAll(isActive: boolean = true): Promise<Book[]> {
@@ -20,7 +19,7 @@ export class BookRepository {
   async findById(id: string): Promise<BookWithCategory | null> {
     const book = await this.bookModel.aggregate<BookWithCategory>([
       {
-        $match: { _id: new mongoose.Types.ObjectId(id) }, //change string to object id
+        $match: { _id: new mongoose.Types.ObjectId(id) }, //change string to object id, don't have mongoose to convert id to object id like findById
       },
       {
         $lookup: {
@@ -78,7 +77,7 @@ export class BookRepository {
       id,
       {
         $inc: {
-          sold: quantity,
+          sold: +quantity,
           stock: -quantity,
         },
       },
@@ -95,53 +94,51 @@ export class BookRepository {
   }
 
   async search(query: string): Promise<BookWithCategory[]> {
-    return this.bookModel
-      .aggregate<BookWithCategory>([
-        {
-          $search: {
-            index: 'bookSearch',
-            compound: {
-              should: [
-                {
-                  wildcard: {
-                    query: query + '*',
-                    path: 'title',
-                    allowAnalyzedField: true,
-                  },
+    return this.bookModel.aggregate<BookWithCategory>([
+      {
+        $search: {
+          index: 'bookSearch',
+          compound: {
+            should: [
+              {
+                wildcard: {
+                  query: query + '*',
+                  path: 'title',
+                  allowAnalyzedField: true,
                 },
-                {
-                  wildcard: {
-                    query: query + '*',
-                    path: 'description',
-                    allowAnalyzedField: true,
-                  },
+              },
+              {
+                wildcard: {
+                  query: query + '*',
+                  path: 'description',
+                  allowAnalyzedField: true,
                 },
-              ],
-            },
+              },
+            ],
           },
         },
-        {
-          $lookup: {
-            from: 'categories',
-            localField: 'category',
-            foreignField: '_id',
-            as: 'category',
-          },
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'category',
         },
-        {
-          $unwind: '$category',
+      },
+      {
+        $unwind: '$category',
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          price: 1,
+          stock: 1,
+          category: { name: 1 },
         },
-        {
-          $project: {
-            _id: 1,
-            title: 1,
-            description: 1,
-            price: 1,
-            stock: 1,
-            category: { name: 1 },
-          },
-        },
-      ])
-      .exec();
+      },
+    ]);
   }
 }

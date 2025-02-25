@@ -31,11 +31,11 @@ export class BookService {
       category: categoryId,
     });
   }
-
+  //All books
   async getBooks(): Promise<Book[]> {
     return this.bookRepository.findAll();
   }
-
+  //Get books by Id
   async getBookById(id: string): Promise<BookWithCategory> {
     const book = await this.bookRepository.findById(id);
     if (!book) {
@@ -43,11 +43,12 @@ export class BookService {
     }
     return book;
   }
-
+  //Update book details
   async updateBook(
     id: string,
     updateBookDto: updateBookDto,
   ): Promise<{ message: string }> {
+    // in case update stock
     if (updateBookDto.stock) {
       const updated = await this.bookRepository.updateStock(
         id,
@@ -60,7 +61,7 @@ export class BookService {
         message: 'Book updated successfully',
       };
     }
-
+    //update other details
     const book = await this.bookRepository.updateById(id, updateBookDto);
     if (!book) {
       throw new NotFoundException('Book not found');
@@ -69,7 +70,7 @@ export class BookService {
       message: 'Book updated successfully',
     };
   }
-
+  //search book
   async searchBooks(query: string): Promise<BookWithCategory[]> {
     try {
       const results = await this.bookRepository.search(query);
@@ -109,7 +110,7 @@ export class BookService {
     if (currentStock < quantity) {
       throw new BadRequestException('Not enough books in stock');
     }
-
+    // update sales
     const updatedBook = await this.bookRepository.updateSales(id, quantity);
 
     if (!updatedBook) {
@@ -118,7 +119,7 @@ export class BookService {
 
     return 'sold successfully';
   }
-
+  //Top-selling books
   async getTopSellingBooks(): Promise<Book[]> {
     return this.bookRepository.findTopSelling();
   }

@@ -22,7 +22,7 @@ export class CreateBookDto {
 
   @IsMongoId()
   @IsNotEmpty()
-  category: string; // รหัสหมวดหมู่ (ObjectId) ที่เชื่อมโยงกับ Category
+  category: string; //(ObjectId) ที่เชื่อมโยงกับ Category
 
   @IsBoolean()
   @IsOptional()
@@ -36,7 +36,7 @@ export class CreateBookDto {
 export class updateBookDto {
   @IsString()
   @IsOptional()
-  title: string;
+  title?: string;
 
   @IsString()
   @IsOptional()
@@ -44,11 +44,11 @@ export class updateBookDto {
 
   @IsNumber()
   @IsOptional()
-  price: number;
+  price?: number;
 
   @IsMongoId()
   @IsOptional()
-  category: string;
+  category?: string;
 
   @IsBoolean()
   @IsOptional()
