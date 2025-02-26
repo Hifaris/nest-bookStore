@@ -67,3 +67,5 @@ export interface BookWithCategory {
   stock?: number;
   category: { name: string };
 }
+
+
