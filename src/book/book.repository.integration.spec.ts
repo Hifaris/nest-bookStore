@@ -2,11 +2,11 @@ import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookRepository } from './book.repository';
 import { Book, BookSchema } from './book.schema';
-import { Category, CategorySchema } from '../category/categoty.schema';
+import { CategorySchema } from '../category/categoty.schema';
 import { Connection, Model } from 'mongoose';
-import { CreateBookDto } from './dto/create.dto';
+import { BookDocument, CreateBookDto } from './dto/create.dto';
 import { CreateCategory } from 'src/category/dto/create.dto';
-import { create } from 'domain';
+import { Types } from 'mongoose';
 
 describe('Book Repository Integration Tests', () => {
   let bookRepository: BookRepository;
@@ -17,16 +17,21 @@ describe('Book Repository Integration Tests', () => {
 
   //reuse function
   async function createTestCategory(
-    name = 'Test Category',
-    description = 'Test Category Description',
-  ): Promise<any> {
+    name: string = 'Test Category',
+    description: string = 'Test Category Description',
+  ): Promise<CreateCategory> {
     return categoryModel.create({
       name,
       description,
-    });
+    }) as Promise<CreateCategory>;
   }
 
-  async function createTestBook(categoryId: string, override = {}) {
+  async function createTestBook(
+    categoryId: string | Types.ObjectId,
+    override = {},
+  ): Promise<BookDocument | null> {
+    const categoryString =
+      categoryId instanceof Types.ObjectId ? categoryId.toString() : categoryId;
     const defaultBook = {
       title: 'Test Book',
       description: 'Test Description',
@@ -34,9 +39,12 @@ describe('Book Repository Integration Tests', () => {
       stock: 10,
       isActive: true,
       sold: 0,
-      category: categoryId,
+      category: categoryString,
     };
-    return bookModel.create({ ...defaultBook, ...override });
+    return bookModel.create({
+      ...defaultBook,
+      ...override,
+    }) as Promise<BookDocument>;
   }
 
   beforeAll(async () => {
@@ -84,7 +92,7 @@ describe('Book Repository Integration Tests', () => {
       price: 299,
       stock: 10,
       isActive: true,
-      category: category?._id,
+      category: category?._id.toString(),
     };
 
     // Act
@@ -93,14 +101,16 @@ describe('Book Repository Integration Tests', () => {
     // Assert
     expect(result).toBeDefined();
 
-    const bookDoc = result as any;
+    const bookDoc = result as BookDocument;
     expect(bookDoc._id).toBeDefined();
     expect(result.title).toEqual(bookData.title);
     expect(result.price).toEqual(bookData.price);
 
     await new Promise((resolve) => setTimeout(resolve, 100));
     // Verify in database
-    const storedBook = await bookModel.findOne({ _id: bookDoc._id });
+    const storedBook: BookDocument | null = await bookModel.findOne({
+      _id: bookDoc._id,
+    });
     expect(storedBook).toBeDefined();
     expect(storedBook).not.toBeNull();
     expect(storedBook?.title).toEqual(bookData.title);
@@ -143,14 +153,15 @@ describe('Book Repository Integration Tests', () => {
     //Arrange
     const category = await createTestCategory('Novel', 'Fiction novels');
 
-    const createBook = await createTestBook(category._id, {
+    const createBook: BookDocument | null = await createTestBook(category._id, {
       title: 'The Great Novel',
       description: 'A bestselling book',
       price: 350,
       stock: 15,
     });
-    const result = await bookRepository.findBookById(createBook._id.toString());
-    console.log(result);
+    const result = await bookRepository.findBookById(
+      createBook!._id.toString(),
+    );
 
     expect(result).toBeDefined();
     expect(result).not.toBeNull();
@@ -175,7 +186,7 @@ describe('Book Repository Integration Tests', () => {
     };
 
     const result = await bookRepository.updateById(
-      createdBook._id.toString(),
+      createdBook!._id.toString(),
       updateData,
     );
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -184,7 +195,9 @@ describe('Book Repository Integration Tests', () => {
     expect(result?.title).toEqual(updateData?.title);
 
     //verify in database
-    const updatedBook = await bookModel.findById(createdBook._id); //ตรวจสอบแบบไม่ผ่าน repository
+    const updatedBook = (await bookModel.findById(
+      createdBook!._id,
+    )) as BookDocument; //ตรวจสอบแบบไม่ผ่าน repository
     expect(updatedBook?.title).toEqual(updateData?.title);
   });
 
@@ -194,11 +207,11 @@ describe('Book Repository Integration Tests', () => {
       'Self improvement books',
     );
 
-    const createdBook = await createTestBook(category._id, {
+    const createdBook = (await createTestBook(category._id, {
       title: 'Mindfulness',
       description: 'Guide to mindfulness',
       price: 250,
-    });
+    })) as BookDocument;
     const stockChange = 3;
 
     const result = await bookRepository.updateStock(
@@ -209,7 +222,9 @@ describe('Book Repository Integration Tests', () => {
     expect(result).toBeDefined();
     expect(result?.stock).toEqual(createdBook?.stock + stockChange);
 
-    const updateBook = await bookModel.findById(createdBook._id);
+    const updateBook = (await bookModel.findById(
+      createdBook._id,
+    )) as BookDocument;
     expect(updateBook?.stock).toEqual(createdBook.stock + stockChange);
   });
 
@@ -226,16 +241,18 @@ describe('Book Repository Integration Tests', () => {
     const purchaseQuantity = 2;
 
     const result = await bookRepository.updateSales(
-      createdBook._id.toString(),
+      createdBook!._id.toString(),
       purchaseQuantity,
     );
 
     expect(result).toBeDefined();
-    expect(result?.sold).toEqual(createdBook?.sold + purchaseQuantity);
-    expect(result?.stock).toEqual(createdBook.stock - purchaseQuantity);
+    expect(result?.sold).toEqual(createdBook!.sold + purchaseQuantity);
+    expect(result?.stock).toEqual(createdBook!.stock - purchaseQuantity);
 
-    const updateBook = await bookModel.findById(createdBook._id);
-    expect(updateBook?.sold).toEqual(createdBook.sold + purchaseQuantity);
+    const updateBook: BookDocument | null = await bookModel.findById(
+      createdBook!._id,
+    );
+    expect(updateBook?.sold).toEqual(createdBook!.sold + purchaseQuantity);
   });
 
   it('should find top selling books', async () => {
@@ -309,15 +326,11 @@ describe('Book Repository Integration Tests', () => {
     expect(result).toBeDefined();
     expect(Array.isArray(result)).toBe(true);
 
-    // ควรพบหนังสือที่มีคำว่า JavaScript ในชื่อหรือคำอธิบาย
-    // expect(result.length).toBeGreaterThan(0);
-
     result.forEach((book) => {
       const hasJavaScriptInTitle = book.title?.includes('JavaScript');
       const hasJavaScriptInDescription =
         book.description?.includes('JavaScript');
       expect(hasJavaScriptInTitle || hasJavaScriptInDescription).toBe(true);
     });
-
   });
 });

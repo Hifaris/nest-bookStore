@@ -68,4 +68,16 @@ export interface BookWithCategory {
   category: { name: string };
 }
 
-
+export interface BookDocument {
+  _id: Types.ObjectId;
+  title: string;
+  description: string;
+  price: number;
+  category: string | Types.ObjectId;
+  isActive: boolean;
+  stock: number;
+  sold: number;
+  createdAt: Date;
+  updatedAt: Date;
+  __v: number;
+}
