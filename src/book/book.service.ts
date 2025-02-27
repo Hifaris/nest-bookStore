@@ -6,7 +6,7 @@ import {
   CreateBookDto,
   updateBookDto,
 } from './dto/create.dto';
-import { CategoryService } from 'src/category/category.service';
+import { CategoryService } from '../category/category.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BookRepository } from './book.repository';
 
